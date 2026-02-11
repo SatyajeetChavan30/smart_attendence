@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance History | Veloces Campus</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar">
+        <div class="logo-container">
+            <div class="logo-text">Veloces<span>Campus</span></div>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html">Dashboard</a></li>
+            <li><a href="mark-attendance.html">Mark Attendance</a></li>
+            <li><a href="history.html" class="active">Attendance History</a></li>
+            <li><a href="reports.html">Reports & Analytics</a></li>
+            <li><a href="#">Profile Settings</a></li>
+            <li><a href="#">Logout</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <div>
+                <h1>Attendance History</h1>
+                <p>View your past attendance records</p>
+            </div>
+            <div class="user-profile">
+                <div class="avatar">SC</div>
+                <span>Satyajeet Chavan</span>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <div style="margin-bottom: 20px; display: flex; justify-content: space-between;">
+                <input type="date" style="padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                <select style="padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                    <option>All Status</option>
+                    <option>Present</option>
+                    <option>Absent</option>
+                    <option>Late</option>
+                </select>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Check-in Time</th>
+                        <th>Check-out Time</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Feb 10, 2026</td>
+                        <td>09:02 AM</td>
+                        <td>04:05 PM</td>
+                        <td>Main Gate</td>
+                        <td><span class="status-badge bg-present">Present</span></td>
+                    </tr>
+                    <tr>
+                        <td>Feb 09, 2026</td>
+                        <td>09:15 AM</td>
+                        <td>04:00 PM</td>
+                        <td>Library Block</td>
+                        <td><span class="status-badge bg-present"
+                                style="background: rgba(253, 203, 110, 0.2); color: #d35400;">Late</span></td>
+                    </tr>
+                    <tr>
+                        <td>Feb 08, 2026</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td><span class="status-badge bg-absent">Absent</span></td>
+                    </tr>
+                    <tr>
+                        <td>Feb 07, 2026</td>
+                        <td>08:55 AM</td>
+                        <td>04:10 PM</td>
+                        <td>Main Gate</td>
+                        <td><span class="status-badge bg-present">Present</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <script src="js/script.js"></script>
+</body>
+
+</html>

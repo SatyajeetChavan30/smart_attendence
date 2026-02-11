@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports & Analytics | Veloces Campus</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .chart-container {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            height: 200px;
+            padding-top: 20px;
+        }
+
+        .bar {
+            width: 40px;
+            background: var(--primary);
+            border-radius: 5px 5px 0 0;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+            position: relative;
+        }
+
+        .bar:hover {
+            opacity: 1;
+        }
+
+        .bar span {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar">
+        <div class="logo-container">
+            <div class="logo-text">Veloces<span>Campus</span></div>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html">Dashboard</a></li>
+            <li><a href="mark-attendance.html">Mark Attendance</a></li>
+            <li><a href="history.html">Attendance History</a></li>
+            <li><a href="reports.html" class="active">Reports & Analytics</a></li>
+            <li><a href="#">Profile Settings</a></li>
+            <li><a href="#">Logout</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <div>
+                <h1>Reports & Analytics</h1>
+                <p>Monthly attendance insights</p>
+            </div>
+            <div class="user-profile">
+                <div class="avatar">SC</div>
+                <span>Satyajeet Chavan</span>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Attendance Trend (Last 7 Days)</h3>
+                <div class="chart-container">
+                    <div class="bar" style="height: 80%;"><span>M</span></div>
+                    <div class="bar" style="height: 90%;"><span>T</span></div>
+                    <div class="bar" style="height: 40%; background: #d63031;"><span>W</span></div>
+                    <div class="bar" style="height: 85%;"><span>T</span></div>
+                    <div class="bar" style="height: 95%;"><span>F</span></div>
+                    <div class="bar" style="height: 0%; background: #dfe6e9;"><span>S</span></div>
+                    <div class="bar" style="height: 0%; background: #dfe6e9;"><span>S</span></div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <h3>Monthly Summary</h3>
+                <div style="margin-top: 20px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span>Present</span>
+                        <strong>22 Days</strong>
+                    </div>
+                    <div style="width: 100%; height: 8px; background: #eee; border-radius: 4px; overflow: hidden;">
+                        <div style="width: 85%; height: 100%; background: #00b894;"></div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px; margin-top: 20px;">
+                        <span>Absent</span>
+                        <strong>3 Days</strong>
+                    </div>
+                    <div style="width: 100%; height: 8px; background: #eee; border-radius: 4px; overflow: hidden;">
+                        <div style="width: 15%; height: 100%; background: #d63031;"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px; margin-top: 20px;">
+                        <span>Late</span>
+                        <strong>2 Days</strong>
+                    </div>
+                    <div style="width: 100%; height: 8px; background: #eee; border-radius: 4px; overflow: hidden;">
+                        <div style="width: 10%; height: 100%; background: #fdcb6e;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-header">
+                <h3>Export Reports</h3>
+            </div>
+            <p style="color: grey; margin-bottom: 20px;">Download your attendance reports for compliance.</p>
+            <button class="btn-primary" style="margin-right: 15px;">Download PDF</button>
+            <button class="btn-primary" style="background: var(--text-muted);">Download CSV</button>
+        </div>
+    </div>
+    <script src="js/script.js"></script>
+</body>
+
+</html>

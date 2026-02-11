@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Attendance Dashboard | Veloces Campus</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar">
+        <div class="logo-container">
+            <!-- Placeholder for logo -->
+            <div class="logo-text">Veloces<span>Campus</span></div>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html" class="active">Dashboard</a></li>
+            <li><a href="mark-attendance.html">Mark Attendance</a></li>
+            <li><a href="history.html">Attendance History</a></li>
+            <li><a href="reports.html">Reports & Analytics</a></li>
+            <li><a href="#">Profile Settings</a></li>
+            <li><a href="#">Logout</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <div class="welcome-text">
+                <h1>Welcome back, Satyajeet!</h1>
+                <p>Computer Science • Semester 6</p>
+            </div>
+            <div class="user-profile">
+                <div class="avatar">SC</div>
+                <span>Satyajeet Chavan</span>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon icon-orange">P</div>
+                </div>
+                <div class="stat-value">85%</div>
+                <div class="stat-label">Overall Attendance</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon icon-green">✔</div>
+                </div>
+                <div class="stat-value">Present</div>
+                <div class="stat-label">Status Today</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon icon-blue">L</div>
+                </div>
+                <div class="stat-value">2</div>
+                <div class="stat-label">Late Arrivals</div>
+            </div>
+        </div>
+
+        <h2 style="margin-bottom: 20px;">Quick Actions</h2>
+        <div class="quick-actions">
+            <div class="action-card" onclick="window.location.href='mark-attendance.html'">
+                <h3>Mark Attendance</h3>
+                <p style="color: grey; margin: 10px 0;">Use facial recognition to mark your daily attendance.</p>
+                <a href="mark-attendance.html" class="btn-primary">Mark Now</a>
+            </div>
+            <div class="action-card" onclick="window.location.href='reports.html'">
+                <h3>View Reports</h3>
+                <p style="color: grey; margin: 10px 0;">Check detailed monthly reports and analytics.</p>
+                <a href="reports.html" class="btn-primary">View Reports</a>
+            </div>
+        </div>
+    </div>
+    <script src="js/script.js"></script>
+</body>
+
+</html>
