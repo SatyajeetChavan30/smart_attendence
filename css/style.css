@@ -44,24 +44,21 @@ body {
 .logo-container {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding-bottom: 30px;
+    justify-content: flex-start;
+    padding: 10px 0 30px 0;
     margin-bottom: 20px;
-    border-bottom: 1px solid #eee;
 }
 
 .logo-container img {
-    height: 40px;
+    max-height: 80px;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+    transition: transform 0.3s ease;
 }
 
-.logo-text {
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: var(--dark);
-}
-
-.logo-text span {
-    color: var(--primary);
+.logo-container img:hover {
+    transform: scale(1.02);
 }
 
 .nav-links {
