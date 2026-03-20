@@ -1,12 +1,17 @@
 let isFaceDetected = false;
 let isLocationVerified = false;
 let isOpenCvLoaded = false;
+let isCameraRunning = false;
+let verificationStartTime = null;
+let test = true;
 
 // Will be called by OpenCV script tag onload
 function onOpenCvReady() {
     console.log('OpenCV.js is ready.');
     isOpenCvLoaded = true;
-    initCamera();
+    if (window.location.pathname.includes('mark-attendance.html')) {
+        initCamera();
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -106,6 +111,9 @@ async function loadCascade() {
 }
 
 async function initCamera() {
+    if (isCameraRunning) return;
+    isCameraRunning = true;
+    
     const videoElement = document.getElementById('camera-feed');
     const loadingText = document.getElementById('camera-loading');
 
@@ -142,6 +150,7 @@ async function initCamera() {
         videoElement.addEventListener('playing', () => {
             if (loadingText) loadingText.style.display = 'none';
             videoElement.style.opacity = '1';
+            verificationStartTime = Date.now();
 
             // Remove old canvas if exists
             const oldOverlay = container.querySelector('.camera-overlay');
@@ -192,29 +201,43 @@ async function initCamera() {
 
                 function processVideo() {
                     try {
-                        if (!videoElement.srcObject) {
+                        if (!videoElement || !videoElement.srcObject) {
                             if (isInitialized) {
-                                src.delete(); gray.delete(); faceCascade.delete();
+                                if (src) src.delete(); 
+                                if (gray) gray.delete(); 
+                                if (faceCascade) faceCascade.delete();
+                                isInitialized = false;
                             }
+                            return;
+                        }
+
+                        // Wait for video dimensions to be ready
+                        if (videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
+                            requestAnimationFrame(processVideo);
                             return;
                         }
 
                         if (!isInitialized) {
                             isInitialized = initializeOpencvVariables();
                             if (!isInitialized) {
-                                // Retry initialization if video dims aren't ready
                                 requestAnimationFrame(processVideo);
                                 return;
                             }
                         }
 
-                        // Ensure canvas dimensions match video
-                        if (canvas.width !== videoElement.videoWidth || canvas.height !== videoElement.videoHeight) {
+                        // Ensure matrices match current video dimensions
+                        if (!src || src.cols !== videoElement.videoWidth || src.rows !== videoElement.videoHeight) {
+                            if (src) src.delete();
+                            if (gray) gray.delete();
+                            if (cap) cap = null; // Prepare to re-init cap
+                            
+                            src = new cv.Mat(videoElement.videoHeight, videoElement.videoWidth, cv.CV_8UC4);
+                            gray = new cv.Mat(videoElement.videoHeight, videoElement.videoWidth, cv.CV_8UC1);
+                            cap = new cv.VideoCapture(videoElement);
+                            
                             canvas.width = videoElement.videoWidth;
                             canvas.height = videoElement.videoHeight;
-                            src.delete(); gray.delete();
-                            src = new cv.Mat(canvas.height, canvas.width, cv.CV_8UC4);
-                            gray = new cv.Mat(canvas.height, canvas.width, cv.CV_8UC1);
+                            console.log(`OpenCV Resized: ${canvas.width}x${canvas.height}`);
                         }
 
                         cap.read(src);
@@ -222,12 +245,10 @@ async function initCamera() {
                         
                         let faces = new cv.RectVector();
                         let msize = new cv.Size(0, 0);
-                        // Detect faces
                         faceCascade.detectMultiScale(gray, faces, 1.1, 3, 0, msize, msize);
                         
                         isFaceDetected = faces.size() > 0;
                         
-                        // Draw bounding boxes
                         for (let i = 0; i < faces.size(); ++i) {
                             let face = faces.get(i);
                             let point1 = new cv.Point(face.x, face.y);
@@ -240,7 +261,14 @@ async function initCamera() {
 
                         setTimeout(processVideo, 1000 / FPS);
                     } catch (err) {
-                        console.error(err);
+                        console.error("OpenCV Processing Error:", err);
+                        // If we see the 'Bad size' error, force a cleanup and retry
+                        if (isInitialized) {
+                            if (src) src.delete();
+                            if (gray) gray.delete();
+                            isInitialized = false;
+                        }
+                        setTimeout(processVideo, 500);
                     }
                 }
 
@@ -336,9 +364,33 @@ function verifyAttendance() {
 
     btn.innerHTML = 'Verifying...';
     btn.disabled = true;
+    status.style.display = 'block';
+    status.innerHTML = 'Starting verification...';
 
+    const timeSpent = verificationStartTime ? (Date.now() - verificationStartTime) / 1000 : 0;
+    
     setTimeout(async () => {
+        let proceed = false;
+        
         if (isFaceDetected && isLocationVerified) {
+            proceed = true;
+        } else if (isLocationVerified && timeSpent >= 15) {
+            if (confirm("AI face detection is taking longer than usual. Proceed with manual verification?")) {
+                proceed = true;
+            }
+        } else if (!isLocationVerified) {
+            btn.innerHTML = 'Verify & Mark Attendance';
+            btn.disabled = false;
+            status.innerHTML = '<span style="color: #d63031; font-weight: bold;">✖ Verification Failed: You must be within the campus radius.</span>';
+            return;
+        } else {
+            btn.innerHTML = 'Verify & Mark Attendance';
+            btn.disabled = false;
+            status.innerHTML = '<span style="color: #d63031; font-weight: bold;">✖ Face not detected yet. Please wait for the green box.</span>';
+            return;
+        }
+
+        if (proceed) {
             try {
                 const user = JSON.parse(localStorage.getItem('smart_user'));
                 const locationStr = locationText ? locationText.innerText : 'Unknown';
@@ -367,17 +419,6 @@ function verifyAttendance() {
                 btn.disabled = false;
                 status.innerHTML = `<span style="color: #d63031; font-weight: bold;">✖ Server Error: ${err.message || 'Verification Failed'}</span>`;
             }
-
-        } else {
-            btn.innerHTML = 'Verify & Mark Attendance';
-            btn.disabled = false;
-            
-            let errorMsg = [];
-            if (!isFaceDetected) errorMsg.push("Face not detected");
-            if (!isLocationVerified) errorMsg.push("Outside campus location");
-            
-            status.innerHTML = `<span style="color: #d63031; font-weight: bold;">✖ Verification Failed: ${errorMsg.join(' and ')}</span>`;
         }
-        status.style.display = 'block';
-    }, 1500);
+    }, 1000);
 }

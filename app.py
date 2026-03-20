@@ -1,18 +1,25 @@
 from flask import Flask, request, jsonify, send_from_directory, redirect
-import sqlite3
 import os
+from database import init_db
+from models.user import User
+from models.attendance import Attendance
 
 app = Flask(__name__, static_folder='.', static_url_path='')
-DB_FILE = 'attendance.db'
 
-# Initialize database if not exists
-from database import init_db
+# Initialize database
 init_db()
 
-def get_db_connection():
-    conn = sqlite3.connect(DB_FILE)
-    conn.row_factory = sqlite3.Row
-    return conn
+# Custom JSON encoder to handle MongoDB ObjectId
+from flask.json.provider import DefaultJSONProvider
+from bson import ObjectId
+
+class CustomJSONProvider(DefaultJSONProvider):
+    def default(self, obj):
+        if isinstance(obj, ObjectId):
+            return str(obj)
+        return super().default(obj)
+
+app.json = CustomJSONProvider(app)
 
 # ---- Static File Routes ----
 @app.route('/')
@@ -30,15 +37,13 @@ def login():
     username = data.get('username')
     password = data.get('password')
 
-    conn = get_db_connection()
-    user = conn.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password)).fetchone()
-    conn.close()
+    user = User.verify_login(username, password)
 
     if user:
         return jsonify({
             "success": True,
             "user": {
-                "id": user['id'],
+                "id": str(user['_id']),
                 "username": user['username'],
                 "name": user['name']
             }
@@ -56,16 +61,16 @@ def mark_attendance():
     if not user_id:
         return jsonify({"success": False, "message": "Missing user_id"}), 400
 
-    conn = get_db_connection()
-    conn.execute(
-        "INSERT INTO attendance (user_id, status, location) VALUES (?, ?, ?)",
-        (user_id, status, location)
-    )
-    conn.commit()
-    conn.close()
-
-    return jsonify({"success": True, "message": "Attendance marked successfully"})
+    try:
+        attendance_id = Attendance.mark(user_id, status, location)
+        return jsonify({
+            "success": True, 
+            "message": "Attendance marked successfully",
+            "attendance_id": str(attendance_id)
+        })
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
 
 if __name__ == '__main__':
-    print("Starting Smart Attendance ERP Server on port 5000...")
+    print("Starting Smart Attendance ERP Server with MongoDB on port 5000...")
     app.run(host='0.0.0.0', port=5000, debug=True)

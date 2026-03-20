@@ -1,43 +1,30 @@
-import sqlite3
+from pymongo import MongoClient
 import os
 
-DB_FILE = "attendance.db"
+MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017/")
+DB_NAME = "smart_attendance"
+
+def get_db():
+    client = MongoClient(MONGO_URI)
+    return client[DB_NAME]
 
 def init_db():
-    if os.path.exists(DB_FILE):
-        return # DB already exists
-
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-
-    # Create Users table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            name TEXT NOT NULL
-        )
-    ''')
-
-    # Create Attendance table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS attendance (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            status TEXT NOT NULL,
-            location TEXT,
-            FOREIGN KEY(user_id) REFERENCES users(id)
-        )
-    ''')
-
-    # Insert a dummy admin user
-    cursor.execute("INSERT INTO users (username, password, name) VALUES ('admin', 'admin', 'Satyajeet Chavan')")
-
-    conn.commit()
-    conn.close()
-    print("Database initialized with dummy user 'admin'.")
+    db = get_db()
+    
+    # Create indexes for performance and uniqueness
+    db.users.create_index("username", unique=True)
+    db.attendance.create_index("user_id")
+    
+    # Insert a dummy admin user if not exists
+    if db.users.count_documents({"username": "admin"}) == 0:
+        db.users.insert_one({
+            "username": "admin",
+            "password": "admin",
+            "name": "Satyajeet Chavan"
+        })
+        print("Database initialized with dummy user 'admin'.")
+    else:
+        print("Database already initialized.")
 
 if __name__ == '__main__':
     init_db()
