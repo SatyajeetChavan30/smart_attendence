@@ -35,6 +35,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // initCamera is called when OpenCV is ready
         initMap();
     }
+
+    if (page === 'history.html') {
+        initHistory(user);
+    }
+
+    if (page === 'reports.html') {
+        initReports(user);
+    }
 });
 
 function initLogin() {
@@ -421,4 +429,108 @@ function verifyAttendance() {
             }
         }
     }, 1000);
+}
+
+async function initHistory(user) {
+    if (!user) return;
+    const tableBody = document.querySelector('tbody');
+    if (!tableBody) return;
+
+    try {
+        const response = await fetch(`/api/attendance-history?user_id=${user.id}`);
+        const result = await response.json();
+
+        if (result.success) {
+            tableBody.innerHTML = '';
+            if (result.history.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No attendance records found.</td></tr>';
+                return;
+            }
+
+            result.history.forEach(record => {
+                const dateObj = new Date(record.timestamp);
+                const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+                const timeStr = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${dateStr}</td>
+                    <td>${timeStr}</td>
+                    <td>-</td>
+                    <td>${record.location}</td>
+                    <td><span class="status-badge bg-${record.status.toLowerCase()}">${record.status}</span></td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+    } catch (err) {
+        console.error("Error loading history:", err);
+    }
+}
+
+async function initReports(user) {
+    if (!user) return;
+    
+    try {
+        const response = await fetch(`/api/attendance-stats?user_id=${user.id}`);
+        const result = await response.json();
+
+        if (result.success) {
+            // Update stats counts
+            const statsContainer = document.querySelector('.stats-grid');
+            if (statsContainer) {
+                const summaryCard = statsContainer.querySelectorAll('.stat-card')[1];
+                if (summaryCard) {
+                    const stats = result.stats;
+                    const total = stats.Present + stats.Absent + stats.Late || 1;
+                    
+                    summaryCard.innerHTML = `
+                        <h3>Monthly Summary</h3>
+                        <div style="margin-top: 20px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                                <span>Present</span>
+                                <strong>${stats.Present} Days</strong>
+                            </div>
+                            <div style="width: 100%; height: 8px; background: #eee; border-radius: 4px; overflow: hidden;">
+                                <div style="width: ${(stats.Present/total)*100}%; height: 100%; background: #00b894;"></div>
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; margin-top: 20px;">
+                                <span>Absent</span>
+                                <strong>${stats.Absent} Days</strong>
+                            </div>
+                            <div style="width: 100%; height: 8px; background: #eee; border-radius: 4px; overflow: hidden;">
+                                <div style="width: ${(stats.Absent/total)*100}%; height: 100%; background: #d63031;"></div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; margin-top: 20px;">
+                                <span>Late</span>
+                                <strong>${stats.Late} Days</strong>
+                            </div>
+                            <div style="width: 100%; height: 8px; background: #eee; border-radius: 4px; overflow: hidden;">
+                                <div style="width: ${(stats.Late/total)*100}%; height: 100%; background: #fdcb6e;"></div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Update Chart
+                const chartContainer = document.querySelector('.chart-container');
+                if (chartContainer) {
+                    chartContainer.innerHTML = '';
+                    result.trend.forEach(item => {
+                        const bar = document.createElement('div');
+                        bar.className = 'bar';
+                        bar.style.height = `${item.value}%`;
+                        if (item.value === 0) bar.style.background = '#dfe6e9';
+                        else if (item.value < 50) bar.style.background = '#d63031';
+                        
+                        bar.innerHTML = `<span>${item.day}</span>`;
+                        chartContainer.appendChild(bar);
+                    });
+                }
+            }
+        }
+    } catch (err) {
+        console.error("Error loading reports:", err);
+    }
 }

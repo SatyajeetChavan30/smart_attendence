@@ -18,3 +18,22 @@ class Attendance:
     def get_user_history(user_id):
         db = get_db()
         return list(db.attendance.find({"user_id": user_id}).sort("timestamp", -1))
+
+    @staticmethod
+    def get_stats(user_id):
+        db = get_db()
+        pipeline = [
+            {"$match": {"user_id": user_id}},
+            {"$group": {
+                "_id": "$status",
+                "count": {"$sum": 1}
+            }}
+        ]
+        results = list(db.attendance.aggregate(pipeline))
+        
+        stats = {"Present": 0, "Absent": 0, "Late": 0}
+        for res in results:
+            if res["_id"] in stats:
+                stats[res["_id"]] = res["count"]
+        
+        return stats

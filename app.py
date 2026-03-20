@@ -71,6 +71,47 @@ def mark_attendance():
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
+@app.route('/api/attendance-history', methods=['GET'])
+def get_attendance_history():
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({"success": False, "message": "Missing user_id"}), 400
+    
+    try:
+        history = Attendance.get_user_history(user_id)
+        return jsonify({
+            "success": True,
+            "history": history
+        })
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@app.route('/api/attendance-stats', methods=['GET'])
+def get_attendance_stats():
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({"success": False, "message": "Missing user_id"}), 400
+    
+    try:
+        stats = Attendance.get_stats(user_id)
+        # Add some mock trend data for the chart
+        trend = [
+            {"day": "M", "value": 80},
+            {"day": "T", "value": 90},
+            {"day": "W", "value": stats.get("Present", 0) * 10 if stats.get("Present", 0) < 10 else 95},
+            {"day": "T", "value": 85},
+            {"day": "F", "value": 95},
+            {"day": "S", "value": 0},
+            {"day": "S", "value": 0}
+        ]
+        return jsonify({
+            "success": True,
+            "stats": stats,
+            "trend": trend
+        })
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
 if __name__ == '__main__':
     print("Starting Smart Attendance ERP Server with MongoDB on port 5000...")
     app.run(host='0.0.0.0', port=5000, debug=True)
