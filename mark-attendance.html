@@ -50,7 +50,8 @@
                         style="width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.5s;"></video>
                     <div class="camera-overlay" style="position: absolute; display: none;"></div>
                 </div>
-                <p>Align your face within the frame</p>
+                <div id="face-status" class="face-status-badge face-status-searching">Scanning for face...</div>
+                <p style="margin-top: 10px;">Align your face within the frame</p>
             </div>
 
             <div class="stat-card" style="text-align: center;">
@@ -70,8 +71,8 @@
         </div>
     </div>
     <script src="js/script.js"></script>
-    <!-- Include OpenCV.js -->
-    <script async src="https://docs.opencv.org/4.8.0/opencv.js" onload="onOpenCvReady();" type="text/javascript"></script>
+    <!-- Include face-api.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 </body>
 
 </html>

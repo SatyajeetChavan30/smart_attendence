@@ -1,18 +1,9 @@
-let isFaceDetected = false;
+let isFaceVerified = false;
 let isLocationVerified = false;
-let isOpenCvLoaded = false;
+let isFaceApiLoaded = false;
 let isCameraRunning = false;
 let verificationStartTime = null;
-let test = true;
-
-// Will be called by OpenCV script tag onload
-function onOpenCvReady() {
-    console.log('OpenCV.js is ready.');
-    isOpenCvLoaded = true;
-    if (window.location.pathname.includes('mark-attendance.html')) {
-        initCamera();
-    }
-}
+let lastFaceVerifiedTime = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
     const path = window.location.pathname;
@@ -31,8 +22,12 @@ document.addEventListener('DOMContentLoaded', () => {
         updateUserInfo(user);
     }
 
+    if (page === 'index.html' || page === '') {
+        initDashboard(user);
+    }
+
     if (page === 'mark-attendance.html') {
-        // initCamera is called when OpenCV is ready
+        initCamera();
         initMap();
     }
 
@@ -44,6 +39,38 @@ document.addEventListener('DOMContentLoaded', () => {
         initReports(user);
     }
 });
+
+async function initDashboard(user) {
+    if (!user) return;
+    try {
+        const response = await fetch(`/api/dashboard-stats?user_id=${user.id}`);
+        const result = await response.json();
+        if (!result.success) return;
+
+        const cards = document.querySelectorAll('.stat-card');
+        if (cards.length >= 1) {
+            const pctEl = cards[0].querySelector('.stat-value');
+            if (pctEl) pctEl.innerText = result.overall_pct + '%';
+        }
+        if (cards.length >= 2) {
+            const statusEl = cards[1].querySelector('.stat-value');
+            if (statusEl) statusEl.innerText = result.today_status;
+            const iconEl = cards[1].querySelector('.stat-icon');
+            if (iconEl) {
+                if (result.today_status === 'Present') { iconEl.innerText = '✔'; iconEl.className = 'stat-icon icon-green'; }
+                else if (result.today_status === 'Late') { iconEl.innerText = 'L'; iconEl.className = 'stat-icon icon-orange'; }
+                else if (result.today_status === 'Absent') { iconEl.innerText = '✖'; iconEl.className = 'stat-icon icon-red'; }
+                else { iconEl.innerText = '—'; iconEl.className = 'stat-icon'; }
+            }
+        }
+        if (cards.length >= 3) {
+            const lateEl = cards[2].querySelector('.stat-value');
+            if (lateEl) lateEl.innerText = result.late_count;
+        }
+    } catch (err) {
+        console.error('Error loading dashboard stats:', err);
+    }
+}
 
 function initLogin() {
     const loginForm = document.getElementById('login-form');
@@ -103,54 +130,57 @@ function updateUserInfo(user) {
     });
 }
 
-// Helper to create a file in OpenCV's virtual file system
-async function loadCascade() {
-    try {
-        const response = await fetch('models/haarcascade_frontalface_default.xml');
-        const buffer = await response.arrayBuffer();
-        const data = new Uint8Array(buffer);
-        cv.FS_createDataFile('/', 'haarcascade_frontalface_default.xml', data, true, false, false);
-        console.log("Cascade loaded into virtual FS.");
-        return true;
-    } catch (error) {
-        console.error("Error loading cascade:", error);
-        return false;
-    }
-}
-
 async function initCamera() {
     if (isCameraRunning) return;
     isCameraRunning = true;
     
     const videoElement = document.getElementById('camera-feed');
     const loadingText = document.getElementById('camera-loading');
+    const container = videoElement ? videoElement.parentElement : null;
 
-    if (!videoElement) {
-        if (loadingText) loadingText.innerText = "Error: Video element missing.";
+    if (!videoElement) return;
+
+    // Fetch user's stored face descriptor
+    let storedDescriptor = null;
+    try {
+        const user = JSON.parse(localStorage.getItem('smart_user'));
+        if (!user.id) {
+            loadingText.innerHTML = "Session is stale. Please <a href='login.html' onclick='localStorage.removeItem(\"smart_user\");'>Log Out and Log In Again</a>.";
+            return;
+        }
+        
+        const resp = await fetch(`/api/user-descriptor?user_id=${user.id}`);
+        const data = await resp.json();
+        if (data.success && data.face_descriptor) {
+            storedDescriptor = new Float32Array(data.face_descriptor);
+        } else {
+            loadingText.innerText = "Error: Face signature not found. Please register your face first.";
+            return;
+        }
+    } catch (err) {
+        console.error("Descriptor fetch error:", err);
+        loadingText.innerText = "Error fetching user descriptor: " + err.message;
         return;
     }
-    const container = videoElement.parentElement;
 
-    if (!isOpenCvLoaded) {
-        if (loadingText) loadingText.innerText = "Waiting for OpenCV to load...";
+    try {
+        await Promise.all([
+            faceapi.nets.ssdMobilenetv1.loadFromUri('/models'),
+            faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
+            faceapi.nets.faceRecognitionNet.loadFromUri('/models')
+        ]);
+        isFaceApiLoaded = true;
+    } catch (error) {
+        console.error("Error loading face-api models:", error);
+        if (loadingText) loadingText.innerText = "Failed to load AI models.";
         return;
     }
 
     try {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            if (loadingText) loadingText.innerText = "Camera API blocked (HTTPS or localhost required).";
-            alert("Camera access is blocked. You MUST use 'http://localhost:5000' or 'http://127.0.0.1:5000' to test the camera locally without HTTPS. If you are using an IP address (e.g. 192.x), the browser will permanently block the camera.");
-            return;
+            throw new Error("Camera API blocked");
         }
 
-        // Load cascade
-        const loaded = await loadCascade();
-        if (!loaded) {
-            if (loadingText) loadingText.innerText = "Error: Failed to load AI model.";
-            return;
-        }
-
-        // Request camera
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
         videoElement.srcObject = stream;
         videoElement.play();
@@ -160,134 +190,83 @@ async function initCamera() {
             videoElement.style.opacity = '1';
             verificationStartTime = Date.now();
 
-            // Remove old canvas if exists
             const oldOverlay = container.querySelector('.camera-overlay');
-            if (oldOverlay) {
-                oldOverlay.style.display = 'block';
-                oldOverlay.remove();
+            if (oldOverlay) oldOverlay.remove();
+                
+            let canvas = container.querySelector('canvas');
+            if (!canvas) {
+                canvas = faceapi.createCanvasFromMedia(videoElement);
+                canvas.style.position = 'absolute';
+                canvas.style.top = '0';
+                canvas.style.left = '0';
+                container.style.position = 'relative';
+                container.appendChild(canvas);
             }
+
+            const displaySize = { width: videoElement.videoWidth || 640, height: videoElement.videoHeight || 480 };
+            faceapi.matchDimensions(canvas, displaySize);
+
+            // Create face matcher with the stored descriptor
+            const labeledDescriptor = new faceapi.LabeledFaceDescriptors("User", [storedDescriptor]);
+            const faceMatcher = new faceapi.FaceMatcher(labeledDescriptor, 0.5); // 0.5 distance threshold
+
+            setInterval(async () => {
+                if (!videoElement || !videoElement.srcObject) return;
+
+                const detection = await faceapi.detectSingleFace(videoElement).withFaceLandmarks().withFaceDescriptor();
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
-                let canvas = container.querySelector('canvas');
-                if (!canvas) {
-                    canvas = document.createElement('canvas');
-                    canvas.style.position = 'absolute';
-                    canvas.style.top = '0';
-                    canvas.style.left = '0';
-                    canvas.width = videoElement.videoWidth || 640;
-                    canvas.height = videoElement.videoHeight || 480;
-                    container.style.position = 'relative';
-                    container.appendChild(canvas);
-                }
+                let matchesUser = false;
 
-                const displaySize = { width: canvas.width, height: canvas.height };
+                if (detection) {
+                    const resizedDetection = faceapi.resizeResults(detection, displaySize);
+                    faceapi.draw.drawDetections(canvas, resizedDetection);
 
-                let cap;
-                let src;
-                let gray;
-                let faceCascade;
+                    const match = faceMatcher.findBestMatch(detection.descriptor);
+                    matchesUser = (match.label === "User");
 
-                function initializeOpencvVariables() {
-                    const width = videoElement.videoWidth;
-                    const height = videoElement.videoHeight;
-                    if (width === 0 || height === 0) return false;
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    displaySize.width = width;
-                    displaySize.height = height;
-
-                    src = new cv.Mat(height, width, cv.CV_8UC4);
-                    gray = new cv.Mat(height, width, cv.CV_8UC1);
-                    cap = new cv.VideoCapture(videoElement);
-                    faceCascade = new cv.CascadeClassifier();
-                    faceCascade.load('haarcascade_frontalface_default.xml');
-                    return true;
-                }
-                
-                const FPS = 15; // Limit FPS to avoid freezing
-                let isInitialized = false;
-
-                function processVideo() {
-                    try {
-                        if (!videoElement || !videoElement.srcObject) {
-                            if (isInitialized) {
-                                if (src) src.delete(); 
-                                if (gray) gray.delete(); 
-                                if (faceCascade) faceCascade.delete();
-                                isInitialized = false;
-                            }
-                            return;
-                        }
-
-                        // Wait for video dimensions to be ready
-                        if (videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
-                            requestAnimationFrame(processVideo);
-                            return;
-                        }
-
-                        if (!isInitialized) {
-                            isInitialized = initializeOpencvVariables();
-                            if (!isInitialized) {
-                                requestAnimationFrame(processVideo);
-                                return;
-                            }
-                        }
-
-                        // Ensure matrices match current video dimensions
-                        if (!src || src.cols !== videoElement.videoWidth || src.rows !== videoElement.videoHeight) {
-                            if (src) src.delete();
-                            if (gray) gray.delete();
-                            if (cap) cap = null; // Prepare to re-init cap
-                            
-                            src = new cv.Mat(videoElement.videoHeight, videoElement.videoWidth, cv.CV_8UC4);
-                            gray = new cv.Mat(videoElement.videoHeight, videoElement.videoWidth, cv.CV_8UC1);
-                            cap = new cv.VideoCapture(videoElement);
-                            
-                            canvas.width = videoElement.videoWidth;
-                            canvas.height = videoElement.videoHeight;
-                            console.log(`OpenCV Resized: ${canvas.width}x${canvas.height}`);
-                        }
-
-                        cap.read(src);
-                        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
-                        
-                        let faces = new cv.RectVector();
-                        let msize = new cv.Size(0, 0);
-                        faceCascade.detectMultiScale(gray, faces, 1.1, 3, 0, msize, msize);
-                        
-                        isFaceDetected = faces.size() > 0;
-                        
-                        for (let i = 0; i < faces.size(); ++i) {
-                            let face = faces.get(i);
-                            let point1 = new cv.Point(face.x, face.y);
-                            let point2 = new cv.Point(face.x + face.width, face.y + face.height);
-                            cv.rectangle(src, point1, point2, [0, 255, 0, 255], 2);
-                        }
-                        
-                        cv.imshow(canvas, src);
-                        faces.delete();
-
-                        setTimeout(processVideo, 1000 / FPS);
-                    } catch (err) {
-                        console.error("OpenCV Processing Error:", err);
-                        // If we see the 'Bad size' error, force a cleanup and retry
-                        if (isInitialized) {
-                            if (src) src.delete();
-                            if (gray) gray.delete();
-                            isInitialized = false;
-                        }
-                        setTimeout(processVideo, 500);
+                    if (matchesUser) {
+                        lastFaceVerifiedTime = Date.now();
                     }
                 }
-
-                // Start processing after a brief delay to ensure video frames are available
-                setTimeout(processVideo, 500); 
-            }, { once: true });
+                
+                isFaceVerified = false;
+                const cameraBox = container;
+                const faceStatusBadge = document.getElementById('face-status');
+                const isRecentlyVerified = (Date.now() - lastFaceVerifiedTime) < 500;
+                
+                if (isRecentlyVerified) {
+                    isFaceVerified = true;
+                    cameraBox.classList.add('face-detected');
+                    if (faceStatusBadge) {
+                        faceStatusBadge.innerText = '✔ Identity Verified';
+                        faceStatusBadge.className = 'face-status-badge face-status-found';
+                    }
+                } else if (detection && !matchesUser) {
+                    cameraBox.classList.remove('face-detected');
+                    if (faceStatusBadge) {
+                        faceStatusBadge.innerText = '✖ Identity Mismatch';
+                        faceStatusBadge.className = 'face-status-badge';
+                        faceStatusBadge.style.background = 'rgba(214, 48, 49, 0.1)';
+                        faceStatusBadge.style.color = 'var(--danger)';
+                    }
+                } else {
+                    cameraBox.classList.remove('face-detected');
+                    if (faceStatusBadge) {
+                        faceStatusBadge.innerText = 'Scanning for face...';
+                        faceStatusBadge.className = 'face-status-badge face-status-searching';
+                        faceStatusBadge.style.background = ''; // reset inline style
+                        faceStatusBadge.style.color = '';
+                    }
+                }
+            }, 300); // Verify roughly 3 times a second
+        }, { once: true });
 
     } catch (err) {
         console.error("Camera access denied or error:", err);
         if (loadingText) loadingText.innerText = "Error: " + err.message;
-        alert("Could not access the camera. Please make sure you granted Camera permissions in your browser and no other application is currently using it.\n\nError: " + err.message);
+        alert("Camera error: " + err.message);
     }
 }
 
@@ -380,10 +359,10 @@ function verifyAttendance() {
     setTimeout(async () => {
         let proceed = false;
         
-        if (isFaceDetected && isLocationVerified) {
+        if (isFaceVerified && isLocationVerified) {
             proceed = true;
         } else if (isLocationVerified && timeSpent >= 15) {
-            if (confirm("AI face detection is taking longer than usual. Proceed with manual verification?")) {
+            if (confirm("Facial recognition is taking longer than usual. Proceed with manual verification?")) {
                 proceed = true;
             }
         } else if (!isLocationVerified) {

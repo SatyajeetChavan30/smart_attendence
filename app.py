@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory, redirect
+from flask import Flask, request, jsonify, send_from_directory
 import os
 from database import init_db
 from models.user import User
@@ -51,6 +51,38 @@ def login():
     else:
         return jsonify({"success": False, "message": "Invalid username or password"}), 401
 
+@app.route('/api/register', methods=['POST'])
+def register():
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    name = data.get('name')
+    face_descriptor = data.get('face_descriptor') # array of 128 floats
+
+    if not all([username, password, name, face_descriptor]):
+        return jsonify({"success": False, "message": "Missing required fields"}), 400
+
+    try:
+        user_id = User.create_user(username, password, name, face_descriptor)
+        return jsonify({"success": True, "message": "User registered successfully", "user_id": str(user_id)})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 400
+
+@app.route('/api/user-descriptor', methods=['GET'])
+def get_user_descriptor():
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({"success": False, "message": "Missing user_id"}), 400
+    
+    user = User.find_by_id(user_id)
+    if not user:
+        return jsonify({"success": False, "message": "User not found"}), 404
+        
+    return jsonify({
+        "success": True,
+        "face_descriptor": user.get('face_descriptor')
+    })
+
 @app.route('/api/mark-attendance', methods=['POST'])
 def mark_attendance():
     data = request.json
@@ -64,7 +96,7 @@ def mark_attendance():
     try:
         attendance_id = Attendance.mark(user_id, status, location)
         return jsonify({
-            "success": True, 
+            "success": True,
             "message": "Attendance marked successfully",
             "attendance_id": str(attendance_id)
         })
@@ -76,7 +108,7 @@ def get_attendance_history():
     user_id = request.args.get('user_id')
     if not user_id:
         return jsonify({"success": False, "message": "Missing user_id"}), 400
-    
+
     try:
         history = Attendance.get_user_history(user_id)
         return jsonify({
@@ -91,24 +123,27 @@ def get_attendance_stats():
     user_id = request.args.get('user_id')
     if not user_id:
         return jsonify({"success": False, "message": "Missing user_id"}), 400
-    
+
     try:
         stats = Attendance.get_stats(user_id)
-        # Add some mock trend data for the chart
-        trend = [
-            {"day": "M", "value": 80},
-            {"day": "T", "value": 90},
-            {"day": "W", "value": stats.get("Present", 0) * 10 if stats.get("Present", 0) < 10 else 95},
-            {"day": "T", "value": 85},
-            {"day": "F", "value": 95},
-            {"day": "S", "value": 0},
-            {"day": "S", "value": 0}
-        ]
+        trend = Attendance.get_weekly_trend(user_id)
         return jsonify({
             "success": True,
             "stats": stats,
             "trend": trend
         })
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@app.route('/api/dashboard-stats', methods=['GET'])
+def get_dashboard_stats():
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({"success": False, "message": "Missing user_id"}), 400
+
+    try:
+        stats = Attendance.get_dashboard_stats(user_id)
+        return jsonify({"success": True, **stats})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
