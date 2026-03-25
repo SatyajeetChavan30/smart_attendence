@@ -38,3 +38,9 @@ class User:
         }
         result = db.users.insert_one(user_doc)
         return result.inserted_id
+    @staticmethod
+    def get_all_descriptors():
+        db = get_db()
+        # Find all users who have a face descriptor
+        users = list(db.users.find({"face_descriptor": {"$ne": None}}, {"name": 1, "face_descriptor": 1}))
+        return users

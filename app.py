@@ -82,6 +82,16 @@ def get_user_descriptor():
         "success": True,
         "face_descriptor": user.get('face_descriptor')
     })
+@app.route('/api/all-descriptors', methods=['GET'])
+def get_all_descriptors():
+    try:
+        users = User.get_all_descriptors()
+        return jsonify({
+            "success": True,
+            "users": users
+        })
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/mark-attendance', methods=['POST'])
 def mark_attendance():

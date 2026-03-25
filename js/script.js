@@ -31,6 +31,10 @@ document.addEventListener('DOMContentLoaded', () => {
         initMap();
     }
 
+    if (page === 'admin-attendance.html') {
+        initAdminScanner();
+    }
+
     if (page === 'history.html') {
         initHistory(user);
     }
