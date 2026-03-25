@@ -257,6 +257,15 @@ body {
     justify-content: center;
 }
 
+.camera-box canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+}
+
 .camera-overlay {
     border: 2px dashed rgba(255, 255, 255, 0.5);
     width: 200px;
