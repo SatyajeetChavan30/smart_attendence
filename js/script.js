@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const path = window.location.pathname;
     const page = path.split('/').pop() || 'index.html';
 
-    // Protect routes
     const user = JSON.parse(localStorage.getItem('smart_user'));
     if (!user && page !== 'login.html') {
         window.location.href = 'login.html';
@@ -121,7 +120,6 @@ function updateUserInfo(user) {
     userNameElements.forEach(el => el.innerText = user.name);
     userAvatarElements.forEach(el => el.innerText = initials);
 
-    // Setup logout hooks
     const logoutLinks = document.querySelectorAll('a[href="#"]');
     logoutLinks.forEach(link => {
         if (link.innerText.trim() === 'Logout') {
@@ -144,7 +142,6 @@ async function initCamera() {
 
     if (!videoElement) return;
 
-    // Fetch user's stored face descriptor
     let storedDescriptor = null;
     try {
         const user = JSON.parse(localStorage.getItem('smart_user'));
@@ -210,9 +207,8 @@ async function initCamera() {
             const displaySize = { width: videoElement.videoWidth || 640, height: videoElement.videoHeight || 480 };
             faceapi.matchDimensions(canvas, displaySize);
 
-            // Create face matcher with the stored descriptor
             const labeledDescriptor = new faceapi.LabeledFaceDescriptors("User", [storedDescriptor]);
-            const faceMatcher = new faceapi.FaceMatcher(labeledDescriptor, 0.5); // 0.5 distance threshold
+            const faceMatcher = new faceapi.FaceMatcher(labeledDescriptor, 0.5);
 
             setInterval(async () => {
                 if (!videoElement || !videoElement.srcObject) return;
@@ -260,11 +256,11 @@ async function initCamera() {
                     if (faceStatusBadge) {
                         faceStatusBadge.innerText = 'Scanning for face...';
                         faceStatusBadge.className = 'face-status-badge face-status-searching';
-                        faceStatusBadge.style.background = ''; // reset inline style
+                        faceStatusBadge.style.background = '';
                         faceStatusBadge.style.color = '';
                     }
                 }
-            }, 300); // Verify roughly 3 times a second
+            }, 300);
         }, { once: true });
 
     } catch (err) {
@@ -274,8 +270,8 @@ async function initCamera() {
     }
 }
 
-let CAMPUS_COORDS = null; // Will set on first load for demo purposes
-const ALLOWED_RADIUS = 50; // meters
+let CAMPUS_COORDS = null;
+const ALLOWED_RADIUS = 50;
 
 function initMap() {
     const mapText = document.getElementById('map-text');
@@ -288,7 +284,6 @@ function initMap() {
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
                 
-                // For demo, we set campus coords to the first fetched location
                 if (!CAMPUS_COORDS) {
                     CAMPUS_COORDS = { lat, lng };
                 }
@@ -329,10 +324,9 @@ function initMap() {
     }
 }
 
-// Haversine formula
 function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371e3; // metres
-    const φ1 = lat1 * Math.PI/180; // φ, λ in radians
+    const R = 6371e3;
+    const φ1 = lat1 * Math.PI/180;
     const φ2 = lat2 * Math.PI/180;
     const Δφ = (lat2-lat1) * Math.PI/180;
     const Δλ = (lon2-lon1) * Math.PI/180;
@@ -342,7 +336,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
               Math.sin(Δλ/2) * Math.sin(Δλ/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
-    return R * c; // in metres
+    return R * c;
 }
 
 function verifyAttendance() {
@@ -459,7 +453,6 @@ async function initReports(user) {
         const result = await response.json();
 
         if (result.success) {
-            // Update stats counts
             const statsContainer = document.querySelector('.stats-grid');
             if (statsContainer) {
                 const summaryCard = statsContainer.querySelectorAll('.stat-card')[1];
@@ -496,7 +489,6 @@ async function initReports(user) {
                     `;
                 }
 
-                // Update Chart
                 const chartContainer = document.querySelector('.chart-container');
                 if (chartContainer) {
                     chartContainer.innerHTML = '';

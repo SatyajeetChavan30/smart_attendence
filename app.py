@@ -6,10 +6,8 @@ from models.attendance import Attendance
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 
-# Initialize database
 init_db()
 
-# Custom JSON encoder to handle MongoDB ObjectId
 from flask.json.provider import DefaultJSONProvider
 from bson import ObjectId
 
@@ -21,7 +19,6 @@ class CustomJSONProvider(DefaultJSONProvider):
 
 app.json = CustomJSONProvider(app)
 
-# ---- Static File Routes ----
 @app.route('/')
 def serve_index():
     return send_from_directory('.', 'index.html')
@@ -30,7 +27,6 @@ def serve_index():
 def serve_static(path):
     return send_from_directory('.', path)
 
-# ---- API Endpoints ----
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.json
@@ -57,7 +53,7 @@ def register():
     username = data.get('username')
     password = data.get('password')
     name = data.get('name')
-    face_descriptor = data.get('face_descriptor') # array of 128 floats
+    face_descriptor = data.get('face_descriptor')
 
     if not all([username, password, name, face_descriptor]):
         return jsonify({"success": False, "message": "Missing required fields"}), 400

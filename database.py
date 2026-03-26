@@ -15,12 +15,10 @@ def hash_password(password):
 def init_db():
     db = get_db()
 
-    # Create indexes for performance and uniqueness
     db.users.create_index("username", unique=True)
     db.attendance.create_index("user_id")
     db.attendance.create_index("timestamp")
 
-    # Insert a default admin user if not exists
     if db.users.count_documents({"username": "admin"}) == 0:
         db.users.insert_one({
             "username": "admin",

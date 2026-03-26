@@ -79,7 +79,6 @@
         </div>
     </div>
 
-    <!-- The custom script for registration logic -->
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             const video = document.getElementById('reg-video');
@@ -90,7 +89,6 @@
 
             let currentDescriptor = null;
 
-            // Load face-api.js models
             try {
                 await Promise.all([
                     faceapi.nets.ssdMobilenetv1.loadFromUri('/models'),
@@ -104,7 +102,6 @@
                 return;
             }
 
-            // Start camera
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
                 video.srcObject = stream;
@@ -143,7 +140,7 @@
                             captureBtn.disabled = true;
                             captureBtn.style.background = 'var(--text-muted)';
                         }
-                    }, 500); // 2 FPS is enough for registration
+                        }, 500);
                 });
             } catch (err) {
                 loading.innerText = "Camera access denied.";
